@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SourceMap 查看工具</title>
+    <script src="https://cdn.staticfile.org/jquery/3.4.1/jquery.js"></script>
+    <script src="https://unpkg.com/source-map@0.7.3/dist/source-map.js"></script>
+    <script>
+      sourceMap.SourceMapConsumer.initialize({
+        'lib/mappings.wasm': 'https://unpkg.com/source-map@0.7.3/lib/mappings.wasm',
+      })
+    </script>
+  </head>
+  <body>
+    <form id="myForm">
+      <p>
+        <label for="line-column">line:column</label>
+        <input id="line-column" name="line-column" />
+      </p>
+      <p>
+        <label for="type">type:</label>
+        <input type="radio" name="type" id="remote" value="1" />
+        <label for="remote">remote</label>
+        <input type="radio" name="type" id="local" value="0" />
+        <label for="local">local</label>
+      </p>
+      <p class="local" style="display: none">
+        <label for="sourceMapFile_local">sourceMapFile</label>
+        <input id="sourceMapFile_local" type="file" name="sourceMapFile" />
+      </p>
+      <p class="remote" style="display: none">
+        <label for="sourceMapFile_remote">sourceMapFile</label>
+        <input id="sourceMapFile_remote" name="sourceMapFile" />
+      </p>
+      <button type="submit" name="submit">确定</button>
+    </form>
+    <table id="result" border="1" cellspacing="0" cellpadding="10">
+      <tr>
+        <th>line:column</th>
+        <th>==></th>
+        <th>source</th>
+        <th>line</th>
+        <th>column</th>
+        <th>name</th>
+      </tr>
+    </table>
+    <script>
+      $(function () {
+        $('#remote').on('change', function () {
+          $('.remote').show()
+          $('.local').hide()
+        })
+        $('#local').on('change', function () {
+          $('.local').show()
+          $('.remote').hide()
+        })
+        const form = $('#myForm')
+        form.on('submit', function (e) {
+          e.preventDefault()
+
+          let [line, column] = $('#line-column').val().split(':')
+          let result = {}
+          if ($('#local')[0].checked) {
+            let file = $('#sourceMapFile_local').get(0).files[0]
+            const fileReader = new FileReader()
+            fileReader.readAsText(file)
+            fileReader.onloadend = function (e) {
+              sourceMap.SourceMapConsumer.with(e.target.result, null, (consumer) => {
+                result = consumer.originalPositionFor({
+                  source: './',
+                  line: +line,
+                  column: +column,
+                })
+                $('#result').append(
+                  $(
+                    `<tr><td>${line}:${column}</td><td> ==> </td><td>${result.source}</td><td>${result.line}</td><td>${result.column}</td><td>${result.name}</td></tr>`
+                  )
+                )
+              })
+            }
+          }
+
+          if ($('#remote')[0].checked) {
+            var url = $('#sourceMapFile_remote').val()
+            fetch(url)
+              .then((res) => res.text())
+              .then((res) => {
+                sourceMap.SourceMapConsumer.with(res, null, (consumer) => {
+                  result = consumer.originalPositionFor({
+                    source: './',
+                    line: +line,
+                    column: +column,
+                  })
+                  $('#result').append(
+                    $(
+                      `<tr><td>${line}:${column}</td><td> ==> </td><td>${result.source}</td><td>${result.line}</td><td>${result.column}</td><td>${result.name}</td></tr>`
+                    )
+                  )
+                })
+              })
+          }
+
+          return false
+        })
+      })
+    </script>
+  </body>
+</html>
